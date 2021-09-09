@@ -49,17 +49,8 @@ void InstallCreatMoveHook()
 	MH_STATUS st;
 	DWORD64 cm = (uint64_t)CUtils::PatternScan((void *)global::g_hGameImage, XorString("48 8B C4 56 41 56 48 81 ?? ?? ?? ?? ?? 48 89 58 ??"));
 	_CreateMove tmpCreateMove = (_CreateMove)(cm);
-	DbgPrintA("CREATEMOVE £∫0x%llX",tmpCreateMove);
-	//VirtualProtect((void*)tmpCreateMove, 0x20, PAGE_EXECUTE_READWRITE, &myLocalView);
-	if ((st = MH_CreateHook(tmpCreateMove, &Hooks::MyCreateMove, reinterpret_cast<void **>(&OLD_CreateMove))) != MH_OK)
-	{
-		DbgPrintA(" ß∞‹‘≠“Ú£∫%s", MH_StatusToString(st));
-	}
-	if ((st = MH_EnableHook(tmpCreateMove)) != MH_OK)
-	{
-		DbgPrintA("enable ß∞‹");
-	}
-
+	MH_CreateHook(tmpCreateMove, &Hooks::MyCreateMove, reinterpret_cast<void**>(&OLD_CreateMove));
+	MH_EnableHook(tmpCreateMove);
 }
 void InitHook()
 {
@@ -129,7 +120,7 @@ void WINAPI InitGame(VOID *p)
 	OffsetsManger::Get().InstallOffset();
 	Interfaces::getInterfaces();
 	InitHook();
-	InstallCreatMoveHook();
+	//InstallCreatMoveHook();
 }
 /*
 LPVOID LM_CreateFakeThread(LPVOID Thread)

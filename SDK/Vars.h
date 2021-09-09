@@ -94,10 +94,11 @@ struct Variables
 		float	Speed = 2.f;
 		bool	EnableSpeedHack = false;
 		bool	FakeLagSpeedHack = false;
+		bool SpeedOnReload = false;
 		bool	Bhop = false;
-		bool Wasd_Strafer = false;
-		float Side_Speed = 450.f;
-		bool	AutoDuck = true;
+		bool	AutoDuck = false;
+		bool Triggerbot = false;
+		int Triggerbot_Key = 0, Triggerbot_Delay = 0;
 		bool	AutoPistol = false;
 		bool	NoSpread = false;
 		bool	AdaptiveFakeLag = false;
@@ -107,7 +108,7 @@ struct Variables
 		int		Airstuck = 0;
 		int		FakeLag = 0;
 		int		AutoDuckLimit = 2;
-		bool	FakeDuck = true;
+		bool	FakeDuck = false;
 	} Misc;
 	bool RageMode = false;
 };

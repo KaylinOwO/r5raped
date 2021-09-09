@@ -81,6 +81,7 @@
     <LinkIncremental>false</LinkIncremental>
     <GenerateManifest>false</GenerateManifest>
     <LibraryPath>../Capstone/msvc/x64/Release;$(LibraryPath)</LibraryPath>
+    <TargetName>r5rape</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>

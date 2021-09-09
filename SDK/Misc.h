@@ -32,6 +32,22 @@ static void inline SinCos(float radians, float *sine, float *cosine)
 	*sine = sin(radians);
 	*cosine = cos(radians);
 }
+inline Vector AngleVectors(const Vector& angles)
+{
+	Vector forward = angles;
+
+	float sp, sy, cp, cy;
+
+	SinCos(DEG2RAD(angles.x), &sp, &cp);
+	SinCos(DEG2RAD(angles.y), &sy, &cy);
+
+	forward.x = cp * cy;
+	forward.y = cp * sy;
+	forward.z = -sp;
+
+	return forward;
+}
+
 static void AngleVectors(const Vector &angles, Vector *forward)
 {
 	float sp, sy, cp, cy;

@@ -14,6 +14,12 @@ struct VMatrixW2S
 		return m[i];
 	}
 };
+void IVEngineClient::ServerCmd(const char* chCommandString, bool bReliable)
+{
+	if (!this) return;
+	typedef void(__thiscall* OriginalFn)(PVOID, const char*, bool);
+	return GetVFunc<OriginalFn>(this, 26)(this, chCommandString, bReliable);
+}
 int IVEngineClient::GetLocalPlayerID()
 {
 	//GetLocalPlayer: 35 index

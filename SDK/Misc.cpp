@@ -4,12 +4,13 @@
 #include "D3dDraw.h"
 extern BONEIDBYMODEL *GetBoneID(int ModelType);
 //CCheats* CheatEngine = GetCheat();
+
 void CMiscellaneous::Bunnyhop()
 {
 	//SEProtectStartMutation();
 	static bool bLastJumped = false;
 	static bool bShouldFake = false;
-
+	static bool JumpState = false;
 	
 	if (!bLastJumped && bShouldFake)
 	{
@@ -19,8 +20,6 @@ void CMiscellaneous::Bunnyhop()
 	}
 	else if (G::UserCmd->buttons & IN_JUMP)
 	{
-
-
 		if (G::LocalPlayer->GetFlags() & FL_ONGROUND)
 		{
 			bLastJumped = true;
@@ -124,14 +123,7 @@ void CRageBot::Rage()
 	if (!m_ent)
 	{
 		shoting = false;
-		bool tmp = true;
-		if (Vars.Rage.OneShot)
-		{
-			if (G::UserCmd->buttons & IN_ATTACK)
-				tmp = false;
-		}
-		if(tmp)
-			FindTarget();
+		FindTarget();
 	}
 	else
 		Aimbot();
@@ -421,7 +413,7 @@ void CRageBot::Aimbot()
 	Vector aim_angle = CalcAngle(G::LocalPlayer->GetEyePosition(), m_BestPoint);
 	aim_angle -= G::LocalPlayer->GetPunch() * 1.f;
 	Vector src = G::LocalPlayer->GetViewAngles();
-	if(Vars.Rage.Legit.Soomth != 0)
+	if(!Vars.Rage.Silent && Vars.Rage.Legit.Soomth > 0)
 		aim_angle = Smooth(src, aim_angle, Vars.Rage.Legit.Soomth);
 	//G::UserCmd->tick_count = m_ent->m_lastUCmdSimulationTicks();
 	if (Vars.Misc.NoSway/* && G::LocalPlayer->isSniper()*/ && distance > 50.f)
@@ -447,6 +439,7 @@ void CRageBot::Aimbot()
 	{
 		G::LocalPlayer->SetViewAngles(aim_angle);
 	}
+
 	if (next_shot > 0.f)
 	{
 		aimboting = false;

@@ -36,16 +36,7 @@ void FakeLag()
 	}
 	//DbgPrintA("G::SendPacket : %d choked: %d", G::SendPacket, choked);
 }
-void doSpeedHack()
-{
-	if (Vars.Misc.SpeedHackKey == 0)
-		*(float*)(global::g_hGameImage + OFFSET::g_GameSpeedHack) = Vars.Misc.Speed;
-	else
-		if (G::PressedKeys[Vars.Misc.SpeedHackKey])
-			*(float*)(global::g_hGameImage + OFFSET::g_GameSpeedHack) = Vars.Misc.Speed;
-		else
-			*(float*)(global::g_hGameImage + OFFSET::g_GameSpeedHack) = 1.f;
-}
+
 void updateSendPack()
 {
 	DWORD64 SendPacket = (global::g_hGameImage + OFFSET::g_SendPacket);
@@ -89,81 +80,35 @@ void AutoDuck()
 }
 void SpeedHack()
 {
-	static int ticks = 0;
 	DWORD64 SpeedHackDw = (global::g_hGameImage + OFFSET::g_GameSpeedHack);
-	if (!IsBadReadPtr((void*)SpeedHackDw, sizeof(SpeedHackDw)))
+	if (IsBadReadPtr((void*)SpeedHackDw, sizeof(SpeedHackDw))) return;
+
+	static int FakelagTicks = 0;
+	bool ShouldSetSpeed = (Vars.Misc.SpeedOnReload && G::LocalPlayer->IsReloading()) || (Vars.Misc.EnableSpeedHack && (Vars.Misc.SpeedHackKey == 0 || (Vars.Misc.SpeedHackKey > 0 && G::PressedKeys[Vars.Misc.SpeedHackKey])));
+
+	Vars.Misc.FakeLag = 0;
+	if (Vars.Misc.FakeLagSpeedHack && ShouldSetSpeed)
 	{
-		if (Vars.Misc.EnableSpeedHack)
+		FakelagTicks++;
+		int tmp = 10;
+		if (FakelagTicks <= tmp)
+			G::SendPacket = false;
+		else
 		{
-			if (!Vars.Misc.FakeLagSpeedHack)
-			{
-				doSpeedHack();
-			}
-			else
-			{
-				Vars.Misc.FakeLag = 0;
-				if (Vars.Misc.SpeedHackKey == 0 || G::PressedKeys[Vars.Misc.SpeedHackKey])
-				{
-					ticks++;
-					int tmp = 10;
-					if (ticks <= tmp)
-						G::SendPacket = false;
-					else
-					{
-						G::SendPacket = true;
-						ticks = 0;
-					}
-				}
-				if (!G::SendPacket)
-				{
-					doSpeedHack();
-				}
-				else
-					*(float*)SpeedHackDw = 1.f;
-			}
-
+			G::SendPacket = true;
+			FakelagTicks = 0;
 		}
-		else
-			*(float*)SpeedHackDw = 1.f;
+
+		if (G::SendPacket) return;
 	}
-}
 
-#include <algorithm>
-float normalizedangle(float ang)
-{
-	if (!std::isfinite(ang))
-		return 0.0f;
 
-	return std::remainder(ang, 360.0f);
-}
-Vector vectorangles(Vector forward)
-{
-	float x, y, b;
-
-	if (forward.y == 0 && forward.x == 0)
+	if (ShouldSetSpeed)
 	{
-		y = 0;
-
-		if (forward.z > 0)
-			x = 270;
-		else
-			x = 90;
-	}
-	else
-	{
-		y = RAD2DEG(atan2f(forward.y, forward.x));
-
-		if (y < 0)
-			y += 360;
-
-		b = forward.Length2D();
-		x = RAD2DEG(atan2f(-forward.z, b));
-
-		if (x < 0)
-			x += 360;
+		*(float*)SpeedHackDw = Vars.Misc.Speed; return;
 	}
 
-	return { x, y, 0 };
+	*(float*)SpeedHackDw = 1.f;
 }
 
 __int64 __fastcall Hooks::MyCreateMove(CInput * pInput, int sequence_number, float input_sample_frametime, bool active)
@@ -265,6 +210,7 @@ void CFixMove::End()
 	G::UserCmd->forwardmove = cos(DEG2RAD(yaw_delta)) * m_oldforward + cos(DEG2RAD(yaw_delta + 90.f)) * m_oldsidemove;
 	G::UserCmd->sidemove = sin(DEG2RAD(yaw_delta)) * m_oldforward + sin(DEG2RAD(yaw_delta + 90.f)) * m_oldsidemove;
 }
+
 void InitMyMenu()
 {
 	//SEProtectStartMutation();
@@ -345,11 +291,10 @@ void RagebotTab()
 			ImGui::SliderFloat(XorString("Fov"), &Vars.Rage.FOV, 1.f, 360.f, "%.0f");
 			ImGui::Checkbox(XorString("Auto Shot"), &Vars.Rage.AutoShot);
 			ImGui::Checkbox(XorString("Visual Check"), &Vars.Rage.VisualCheck);
-			ImGui::SliderInt(XorString("Soomth"), &Vars.Rage.Legit.Soomth, 0, 100);
+			ImGui::SliderInt(XorString("Smooth"), &Vars.Rage.Legit.Soomth, 0, 100);
 			ImGui::Checkbox(XorString("Silent Aim"), &Vars.Rage.Silent);
 	//		ImGui::Checkbox(XorString("Extrapolate Tick"), &Vars.Rage.ExtrapolateTick);
 			ImGui::Checkbox(XorString("Player Predict"), &Vars.Rage.Predict);//
-			ImGui::Checkbox(XorString("One Shot"), &Vars.Rage.OneShot);
 			ImGui::Checkbox(XorString("Baim Shotgun"), &Vars.Rage.BaimShotGun);
 			ImGui::Checkbox(XorString("NoSway"), &Vars.Misc.NoSway);
 			ImGui::SliderFloat(XorString("Max Aim Distance"), &Vars.Rage.MaxDis, 0.1f, 500.f, "%.1f");
@@ -487,6 +432,7 @@ void MiscHackTab()
 			ImGui::Checkbox(XorString("Fake Duck"), &Vars.Misc.FakeDuck);
 			ImGui::Checkbox(XorString("SpeedHack"), &Vars.Misc.EnableSpeedHack);
 			ImGui::Combo(XorString("SpeedHack Key"), &Vars.Misc.SpeedHackKey, keyNames, ARRAYSIZE(keyNames));
+			ImGui::Checkbox(XorString("SpeedHack On Reload"), &Vars.Misc.SpeedOnReload);
 			ImGui::SliderFloat(XorString("Speed"), &Vars.Misc.Speed, 1.f, 8.f, "%.1f");
 			ImGui::Checkbox(XorString("FakeLag SpeedHack"), &Vars.Misc.FakeLagSpeedHack);
 			ImGui::Separator();
@@ -525,7 +471,8 @@ void MainWindows()
 			const char* tabs[] = {
 				"Aim",
 				"Visual",
-				"Misc"
+				"Misc",
+				"Colors"
 			};
 			int tabs_size = sizeof(tabs) / sizeof(tabs[0]);
 
@@ -564,6 +511,24 @@ void MainWindows()
 				break;
 			case 2:
 				MiscHackTab();
+				break;
+			case 3:
+				ImGuiStyle* style = &ImGui::GetStyle();
+				ImGui::BeginChild("##colors", ImVec2(0, 0), true, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar | ImGuiWindowFlags_NavFlattened);
+				ImGui::PushItemWidth(-160);
+				for (int i = 0; i < ImGuiCol_COUNT; i++)
+				{
+					const char* name = ImGui::GetStyleColorName(i);
+
+					ImGui::PushID(i);
+					ImGui::ColorEdit4("##color", (float*)&style->Colors[i], ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_AlphaPreviewHalf);
+
+					ImGui::SameLine(0.0f, style->ItemInnerSpacing.x);
+					ImGui::TextUnformatted(name);
+					ImGui::PopID();
+				}
+				ImGui::PopItemWidth();
+				ImGui::EndChild();
 				break;
 			}
 			ImGui::End();
@@ -815,9 +780,8 @@ HRESULT Hooks::PresentHooked(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT
 	MainWindows();
 	if (Vars.Visuals.Radar.Enable)
 		DrawRadar();
-	if (Vars.Rage.Enabled && Vars.Rage.EnabledAimbot)
-		E::RageBot->Rage();
 	SpeedHack();
+	if (Vars.Rage.Enabled && Vars.Rage.EnabledAimbot) E::RageBot->Rage();
 	doNoSpread();
 	ImGui::Render();
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());

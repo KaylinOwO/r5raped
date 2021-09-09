@@ -5,6 +5,7 @@
 class IVEngineClient
 {
 public:
+	void ServerCmd(const char* chCommandString, bool bReliable = true);
 	int GetLocalPlayerID();
 	bool IsConnected(void);
 //	bool FullLoadGame(void);
