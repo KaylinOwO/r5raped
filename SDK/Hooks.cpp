@@ -37,12 +37,6 @@ void FakeLag()
 	//DbgPrintA("G::SendPacket : %d choked: %d", G::SendPacket, choked);
 }
 
-void updateSendPack()
-{
-	DWORD64 SendPacket = (global::g_hGameImage + OFFSET::g_SendPacket);
-	if (!IsBadReadPtr((void*)SendPacket, sizeof(SendPacket)))
-		*(bool*)SendPacket = G::SendPacket;
-}
 void doNoSpread()
 {
 	if (Vars.Misc.NoSpread)
@@ -55,29 +49,6 @@ void doNoSpread()
 		}
 	}
 }
-void AutoDuck()
-{
-	if (!Vars.Misc.AutoDuck || G::LocalPlayer->GetvecAbsVelocity().Length() > 50.f || (G::UserCmd->buttons & IN_USE))
-		return;
-	static bool counter = false;
-	static int counte = 0;
-	if (counte >= Vars.Misc.AutoDuckLimit) {
-		counte = 0;
-		counter = !counter;
-	}
-	counte++;
-	//G::UserCmd->buttons |= IN_BULLRUSH;
-	if (counter) {
-		G::UserCmd->buttons |= IN_DUCK;
-		if (Vars.Misc.FakeDuck)
-			G::SendPacket = true;
-	}
-	else {
-		G::UserCmd->buttons &= ~IN_DUCK;
-		if (Vars.Misc.FakeDuck)
-			G::SendPacket = false;
-	}
-}
 void SpeedHack()
 {
 	DWORD64 SpeedHackDw = (global::g_hGameImage + OFFSET::g_GameSpeedHack);
@@ -85,23 +56,6 @@ void SpeedHack()
 
 	static int FakelagTicks = 0;
 	bool ShouldSetSpeed = (Vars.Misc.SpeedOnReload && G::LocalPlayer->IsReloading()) || (Vars.Misc.EnableSpeedHack && (Vars.Misc.SpeedHackKey == 0 || (Vars.Misc.SpeedHackKey > 0 && G::PressedKeys[Vars.Misc.SpeedHackKey])));
-
-	Vars.Misc.FakeLag = 0;
-	if (Vars.Misc.FakeLagSpeedHack && ShouldSetSpeed)
-	{
-		FakelagTicks++;
-		int tmp = 10;
-		if (FakelagTicks <= tmp)
-			G::SendPacket = false;
-		else
-		{
-			G::SendPacket = true;
-			FakelagTicks = 0;
-		}
-
-		if (G::SendPacket) return;
-	}
-
 
 	if (ShouldSetSpeed)
 	{
@@ -113,70 +67,8 @@ void SpeedHack()
 
 __int64 __fastcall Hooks::MyCreateMove(CInput * pInput, int sequence_number, float input_sample_frametime, bool active)
 {
-	updateSendPack();
-	__int64 Result =  OLD_CreateMove(pInput, sequence_number, input_sample_frametime,active);
-	G::LocalPlayer = (CBaseEntity*)I::ClientEntList->GetClientEntity(I::Engine->GetLocalPlayerID());
-	if (!I::Engine->IsInGame() || !GetCheat())
-	{
-		G::SendPacket = true;
-		return Result;
-	}
-	CUserCmd* pCMD = reinterpret_cast<CUserCmd*>(*(reinterpret_cast<std::uintptr_t*>(pInput) + 31) + 0x280 * (sequence_number % 750));
-	if (!pCMD || pCMD->command_number == NULL)
-		return Result;
-	G::UserCmd = pCMD;
-	if (!G::LocalPlayer || !G::LocalPlayer->isAlive())
-	{
-		G::SendPacket = true;
-		return Result;
-	}
-	if (Vars.Misc.Bhop)
-	{
-		E::Misc->Bunnyhop();
-	}
-
-//	E::Misc->AutoStrafe();
-	if (Vars.Rage.Enabled)
-	{
-		if (Vars.Rage.EnabledAimbot)
-			E::RageBot->Rage();
-		if (Vars.Rage.AntiAim.Enable)
-		{
-			CFixMove fixMove;
-			fixMove.Start();
-			E::RageBot->AntiAim();
-			fixMove.End();
-		}	
-	}
-	if (Vars.Misc.FakeLag != 0)
-		FakeLag();
-	else if (!Vars.Rage.AntiAim.Enable)
-		G::SendPacket = true;
-	if (Vars.Misc.AutoPistol)
-	{
-		if (G::LocalPlayer->isSingleShotWeapon())
-		{
-			if (G::UserCmd->buttons & IN_ATTACK)
-			{
-				static bool bFlip = false;
-				if (bFlip)
-					G::UserCmd->buttons &= ~IN_ATTACK;
-				bFlip = !bFlip;
-			}
-		}
-	}
-	doNoSpread();
-	SpeedHack();
-	AutoDuck();
-	if (!(Vars.Rage.AntiAim.Enable && (Vars.Rage.AntiAim.Pitch == AA_Pitch_Lisp || Vars.Rage.AntiAim.Yaw == AA_YAW_LispFake)))
-		G::UserCmd->viewangles.Clamp();
-	
-	return GetChecksum((DWORD64*)pCMD);
-	//SEProtectEnd();
+	return NULL;
 }
-
-
-
 
 void CFixMove::Start()
 {
@@ -292,8 +184,6 @@ void RagebotTab()
 			ImGui::Checkbox(XorString("Auto Shot"), &Vars.Rage.AutoShot);
 			ImGui::Checkbox(XorString("Visual Check"), &Vars.Rage.VisualCheck);
 			ImGui::SliderInt(XorString("Smooth"), &Vars.Rage.Legit.Soomth, 0, 100);
-			ImGui::Checkbox(XorString("Silent Aim"), &Vars.Rage.Silent);
-	//		ImGui::Checkbox(XorString("Extrapolate Tick"), &Vars.Rage.ExtrapolateTick);
 			ImGui::Checkbox(XorString("Player Predict"), &Vars.Rage.Predict);//
 			ImGui::Checkbox(XorString("Baim Shotgun"), &Vars.Rage.BaimShotGun);
 			ImGui::Checkbox(XorString("NoSway"), &Vars.Misc.NoSway);
@@ -323,13 +213,6 @@ void RagebotTab()
 			ImGui::SliderInt(XorString("Baim X Shot"), &Vars.Rage.Legit.BaimAfterXshot, 0, 25);
 			ImGui::SliderInt(XorString("Baim Low HP"), &Vars.Rage.Legit.BaimLowHP, 0, 100);
 			ImGui::SliderInt(XorString("Stop Aim X Shot"), &Vars.Rage.Legit.StopAfterXshot, 0, 25);
-			ImGui::Separator();
-			ImGui::Checkbox(XorString("Enable AntiAim"), &Vars.Rage.AntiAim.Enable);
-			ImGui::Separator();
-			ImGui::Combo(XorString("Pitch"), &Vars.Rage.AntiAim.Pitch, AntiAim_X, ARRAYSIZE(AntiAim_X));
-			ImGui::Combo(XorString("Real Yaw"), &Vars.Rage.AntiAim.Yaw, AntiAim_Y, ARRAYSIZE(AntiAim_Y));
-			ImGui::Checkbox(XorString("Aways At Player"), &Vars.Rage.AntiAim.AtPlayer);
-			ImGui::Separator();
 			ImGui::EndChild();
 		}
 	}
@@ -426,15 +309,10 @@ void MiscHackTab()
 			ImGui::Text(XorString("MoveMent"));
 			ImGui::Separator();
 			//这边做加速什么的
-			ImGui::Checkbox(XorString("Bhop"), &Vars.Misc.Bhop);
-			ImGui::Checkbox(XorString("AutoDuck"), &Vars.Misc.AutoDuck);
-			ImGui::SliderInt(XorString("AutoDuck Limit"), &Vars.Misc.AutoDuckLimit, 1, 14);
-			ImGui::Checkbox(XorString("Fake Duck"), &Vars.Misc.FakeDuck);
 			ImGui::Checkbox(XorString("SpeedHack"), &Vars.Misc.EnableSpeedHack);
 			ImGui::Combo(XorString("SpeedHack Key"), &Vars.Misc.SpeedHackKey, keyNames, ARRAYSIZE(keyNames));
 			ImGui::Checkbox(XorString("SpeedHack On Reload"), &Vars.Misc.SpeedOnReload);
 			ImGui::SliderFloat(XorString("Speed"), &Vars.Misc.Speed, 1.f, 8.f, "%.1f");
-			ImGui::Checkbox(XorString("FakeLag SpeedHack"), &Vars.Misc.FakeLagSpeedHack);
 			ImGui::Separator();
 			ImGui::EndChild();
 		}
@@ -446,10 +324,7 @@ void MiscHackTab()
 		{
 			ImGui::Text(XorString("Other"));
 			ImGui::Separator();
-			ImGui::Checkbox(XorString("Auto-Pistol"), &Vars.Misc.AutoPistol);
 			ImGui::Checkbox(XorString("NoSpread"), &Vars.Misc.NoSpread);
-			ImGui::SliderInt(XorString("FakeLag"), &Vars.Misc.FakeLag, 0, 14);
-			ImGui::Checkbox(XorString("FakeLag Adaptive"), &Vars.Misc.AdaptiveFakeLag);
 			ImGui::Separator();
 			ImGui::EndChild();
 		}

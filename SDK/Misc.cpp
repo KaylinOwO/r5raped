@@ -431,14 +431,8 @@ void CRageBot::Aimbot()
 
 	aim_angle.Clamp();
 	
-	if (Vars.Rage.Silent)
-	{
-		G::UserCmd->viewangles = QAngle(aim_angle.x, aim_angle.y, aim_angle.z);
-	}
-	else
-	{
-		G::LocalPlayer->SetViewAngles(aim_angle);
-	}
+	G::LocalPlayer->SetViewAngles(aim_angle);
+
 
 	if (next_shot > 0.f)
 	{
